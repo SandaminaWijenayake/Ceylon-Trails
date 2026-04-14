@@ -3,6 +3,9 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
+import bookingRoutes from "./routes/bookings.js";
+import wishlistRoutes from "./routes/wishlist.js";
+import "./cron/bookingJobs.js";
 
 dotenv.config();
 
@@ -17,6 +20,8 @@ mongoose
   .catch((err) => console.log("❌ DB Error:", err));
 
 app.use("/auth", authRoutes);
+app.use("/bookings", bookingRoutes);
+app.use("/wishlist", wishlistRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`📡 Server on port ${PORT}`));
