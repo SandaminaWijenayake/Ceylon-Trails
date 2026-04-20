@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { tours, bookings, adminUsers } from "@/data/travel-data";
+import { bookings, adminUsers } from "@/data/travel-data";
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/admin" },
@@ -33,10 +33,27 @@ const navItems = [
   { label: "Users", icon: Users, path: "/admin/users" },
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+// Helper to get full image URL
+const getImageUrl = (imagePath: string): string => {
+  if (!imagePath) return "";
+  if (imagePath.startsWith("http")) return imagePath;
+  return `${API_BASE}/assets/tours/${imagePath}`;
+};
+
 function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const { pathname } = useLocation();
+
+  const userName = localStorage.getItem("userName") || "Admin";
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div
@@ -118,10 +135,10 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             </button>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-semibold text-accent">
-                PS
+                {userInitials}
               </div>
               <span className="text-sm font-medium hidden sm:block">
-                Priya S.
+                {userName}
               </span>
             </div>
           </div>
@@ -275,7 +292,223 @@ function OverviewPage() {
 }
 
 function ToursManagement() {
+  const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingTour, setEditingTour] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    location: "",
+    price: "",
+    rating: "",
+    reviewCount: "",
+    duration: "",
+    type: "",
+    groupType: "",
+    includes: "",
+    images: [],
+    description: "",
+    status: "active",
+  });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchTours();
+  }, []);
+
+  const fetchTours = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/tours`);
+      setTours(response.data.tours);
+    } catch (error) {
+      console.error("Failed to fetch tours:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load tours.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const uploadImages = async () => {
+    if (selectedFiles.length !== 4) {
+      throw new Error("Please select exactly 4 images");
+    }
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const formDataUpload = new FormData();
+      selectedFiles.forEach((file) => {
+        formDataUpload.append("images", file);
+      });
+
+      const response = await axios.post(
+        `${API_BASE}/tours/upload-images`,
+        formDataUpload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      return response.data.imagePaths;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("authToken");
+
+    try {
+      let imagePaths = formData.images;
+
+      if (selectedFiles.length > 0) {
+        imagePaths = await uploadImages();
+      }
+
+      const tourData = {
+        ...formData,
+        images: imagePaths,
+        price: parseFloat(formData.price),
+        rating: parseFloat(formData.rating),
+        reviewCount: parseInt(formData.reviewCount),
+        includes: formData.includes
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item),
+      };
+
+      if (editingTour) {
+        await axios.put(`${API_BASE}/tours/${editingTour._id}`, tourData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast({
+          title: "Success",
+          description: "Tour updated successfully.",
+        });
+      } else {
+        await axios.post(`${API_BASE}/tours`, tourData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast({
+          title: "Success",
+          description: "Tour created successfully.",
+        });
+      }
+
+      setShowModal(false);
+      setEditingTour(null);
+      resetForm();
+      fetchTours();
+    } catch (error) {
+      console.error("Failed to save tour:", error);
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to save tour.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (tour) => {
+    setEditingTour(tour);
+    setFormData({
+      title: tour.title,
+      location: tour.location,
+      price: tour.price.toString(),
+      rating: tour.rating.toString(),
+      reviewCount: tour.reviewCount.toString(),
+      duration: tour.duration,
+      type: tour.type,
+      groupType: tour.groupType,
+      includes: tour.includes.join(", "),
+      images: tour.images || [],
+      description: tour.description,
+      status: tour.status,
+    });
+    setShowModal(true);
+  };
+
+  const handleCopy = (tour) => {
+    setFormData({
+      title: `${tour.title} (Copy)`,
+      location: tour.location,
+      price: tour.price.toString(),
+      rating: tour.rating.toString(),
+      reviewCount: tour.reviewCount.toString(),
+      duration: tour.duration,
+      type: tour.type,
+      groupType: tour.groupType,
+      includes: tour.includes.join(", "),
+      images: tour.images || [],
+      description: tour.description,
+      status: tour.status,
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (tourId) => {
+    if (!confirm("Are you sure you want to delete this tour?")) return;
+
+    const token = localStorage.getItem("authToken");
+    try {
+      await axios.delete(`${API_BASE}/tours/${tourId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast({
+        title: "Success",
+        description: "Tour deleted successfully.",
+      });
+      fetchTours();
+    } catch (error) {
+      console.error("Failed to delete tour:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete tour.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      location: "",
+      price: "",
+      rating: "",
+      reviewCount: "",
+      duration: "",
+      type: "",
+      groupType: "",
+      includes: "",
+      images: [],
+      description: "",
+      status: "active",
+    });
+    setSelectedFiles([]);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingTour(null);
+    resetForm();
+  };
+
+  if (loading) {
+    return <div className="text-center py-12">Loading tours...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -311,13 +544,13 @@ function ToursManagement() {
             <tbody>
               {tours.map((t) => (
                 <tr
-                  key={t.id}
+                  key={t._id}
                   className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <img
-                        src={t.image}
+                        src={getImageUrl(t.images?.[0] || "")}
                         alt={t.title}
                         className="w-10 h-10 rounded-md object-cover shrink-0"
                       />
@@ -334,18 +567,27 @@ function ToursManagement() {
                   </td>
                   <td className="px-5 py-4">
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
-                      <Eye className="w-3 h-3" /> Active
+                      <Eye className="w-3 h-3" /> {t.status}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                      <button
+                        onClick={() => handleEdit(t)}
+                        className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                      >
                         <Edit className="w-4 h-4 text-muted-foreground" />
                       </button>
-                      <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                      <button
+                        onClick={() => handleCopy(t)}
+                        className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                      >
                         <Copy className="w-4 h-4 text-muted-foreground" />
                       </button>
-                      <button className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
+                      <button
+                        onClick={() => handleDelete(t._id)}
+                        className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                      >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </button>
                     </div>
@@ -361,52 +603,184 @@ function ToursManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-foreground/20 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
+            onClick={closeModal}
           />
           <div className="relative bg-card border border-border/60 rounded-lg p-7 w-full max-w-lg shadow-xl space-y-6 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-foreground font-display">
-                Add New Tour
+                {editingTour ? "Edit Tour" : "Add New Tour"}
               </h2>
-              <button onClick={() => setShowModal(false)}>
+              <button onClick={closeModal}>
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
-            <ModalField label="Title" placeholder="Tour name" />
-            <div className="grid grid-cols-2 gap-4">
-              <ModalField label="Location" placeholder="City" />
-              <ModalField label="Price ($)" placeholder="0" type="number" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <ModalField label="Duration" placeholder="e.g., 2-3 days" />
-              <ModalField label="Type" placeholder="Adventure" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-foreground mb-2 block uppercase tracking-wider">
-                Description
-              </label>
-              <textarea
-                rows={3}
-                className="w-full bg-muted/60 border border-border/40 rounded-md px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-accent/30 resize-none"
-                placeholder="Tour description..."
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <ModalField
+                label="Title"
+                placeholder="Tour name"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+                required
               />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="accent"
-                className="flex-1"
-                onClick={() => setShowModal(false)}
-              >
-                Save Tour
-              </Button>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <ModalField
+                  label="Location"
+                  placeholder="City"
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                  required
+                />
+                <ModalField
+                  label="Price ($)"
+                  placeholder="0"
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <ModalField
+                  label="Rating"
+                  placeholder="4.5"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
+                  value={formData.rating}
+                  onChange={(e) =>
+                    setFormData({ ...formData, rating: e.target.value })
+                  }
+                  required
+                />
+                <ModalField
+                  label="Review Count"
+                  placeholder="100"
+                  type="number"
+                  value={formData.reviewCount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, reviewCount: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <ModalField
+                  label="Duration"
+                  placeholder="e.g., 2-3 days"
+                  value={formData.duration}
+                  onChange={(e) =>
+                    setFormData({ ...formData, duration: e.target.value })
+                  }
+                  required
+                />
+                <ModalField
+                  label="Type"
+                  placeholder="Adventure"
+                  value={formData.type}
+                  onChange={(e) =>
+                    setFormData({ ...formData, type: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <ModalField
+                label="Group Type"
+                placeholder="Family"
+                value={formData.groupType}
+                onChange={(e) =>
+                  setFormData({ ...formData, groupType: e.target.value })
+                }
+                required
+              />
+              <div>
+                <label className="text-xs font-medium text-foreground mb-2 block uppercase tracking-wider">
+                  Tour Images (Select 4 images)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) =>
+                    setSelectedFiles(Array.from(e.target.files || []))
+                  }
+                  className="w-full bg-muted/60 border border-border/40 rounded-md px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+                  required={!editingTour || selectedFiles.length === 0}
+                />
+                {selectedFiles.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedFiles.length} file(s) selected
+                  </p>
+                )}
+                {editingTour &&
+                  formData.images.length > 0 &&
+                  selectedFiles.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current images will be kept. Select new files to replace.
+                    </p>
+                  )}
+              </div>
+              <ModalField
+                label="Includes (comma-separated)"
+                placeholder="Transport, Guide, Meals"
+                value={formData.includes}
+                onChange={(e) =>
+                  setFormData({ ...formData, includes: e.target.value })
+                }
+                required
+              />
+              <div>
+                <label className="text-xs font-medium text-foreground mb-2 block uppercase tracking-wider">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full bg-muted/60 border border-border/40 rounded-md px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-accent/30 resize-none"
+                  placeholder="Tour description..."
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground mb-2 block uppercase tracking-wider">
+                  Status
+                </label>
+                <select
+                  className="w-full bg-muted/60 border border-border/40 rounded-md px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-accent/30"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  required
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={closeModal}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="accent" className="flex-1">
+                  {editingTour ? "Update Tour" : "Save Tour"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -429,11 +803,9 @@ function BookingsManagement() {
   const fetchBookings = async () => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(`${API_BASE}/bookings/me`, {
+      const response = await axios.get(`${API_BASE}/bookings/all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // For admin, we should have a separate endpoint to get all bookings
-      // For now, using user's bookings as placeholder
       setBookings(response.data.bookings);
     } catch (error) {
       console.error("Failed to fetch bookings:", error);
@@ -451,12 +823,16 @@ function BookingsManagement() {
     setUpdatingId(bookingId);
     try {
       const token = localStorage.getItem("authToken");
-      // This would need a new admin endpoint for status updates
-      // For now, just showing the concept
+      await axios.put(
+        `${API_BASE}/bookings/${bookingId}/status`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       toast({
-        title: "Status updated",
-        description: `Booking status changed to ${newStatus}.`,
+        title: "Success",
+        description: `Booking status updated to ${newStatus}.`,
       });
+      fetchBookings(); // Refresh the list
     } catch (error) {
       toast({
         title: "Update failed",
@@ -496,7 +872,7 @@ function BookingsManagement() {
                   Status
                 </th>
                 <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider text-right">
-                  Actions
+                  Total
                 </th>
               </tr>
             </thead>
@@ -525,7 +901,7 @@ function BookingsManagement() {
                     >
                       <option value="confirmed">Confirmed</option>
                       <option value="cancelled">Cancelled</option>
-                      <option value="expired">Expired</option>
+                      <option value="completed">Completed</option>
                     </select>
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -544,6 +920,39 @@ function BookingsManagement() {
 }
 
 function UsersManagement() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await axios.get(`${API_BASE}/users/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(response.data.users);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load users.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-12">Loading users...</div>;
+  }
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-foreground">User Management</h1>
@@ -570,18 +979,19 @@ function UsersManagement() {
               </tr>
             </thead>
             <tbody>
-              {adminUsers.map((u) => (
+              {users.map((u) => (
                 <tr
-                  key={u.id}
+                  key={u._id}
                   className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-semibold text-accent">
-                        {u.initials}
+                        {u.firstName.charAt(0)}
+                        {u.lastName.charAt(0)}
                       </div>
                       <span className="font-medium text-foreground">
-                        {u.name}
+                        {u.firstName} {u.lastName}
                       </span>
                     </div>
                   </td>
@@ -599,7 +1009,7 @@ function UsersManagement() {
                     {u.bookings}
                   </td>
                   <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">
-                    {u.lastActive}
+                    {new Date(u.lastActive).toLocaleDateString()}
                   </td>
                 </tr>
               ))}

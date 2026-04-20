@@ -9,6 +9,16 @@ import { isTokenValid } from "@/lib/utils";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
+// Helper to get tour ID from either _id or id field
+const getTourId = (tour: Tour): string => (tour._id || tour.id) as string;
+
+// Helper to get full image URL
+const getImageUrl = (imagePath: string): string => {
+  if (!imagePath) return "";
+  if (imagePath.startsWith("http")) return imagePath;
+  return `${API_BASE}/assets/tours/${imagePath}`;
+};
+
 export default function TourCard({ tour }: { tour: Tour }) {
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,14 +32,14 @@ export default function TourCard({ tour }: { tour: Tour }) {
     if (isLoggedIn) {
       checkIfSaved();
     }
-  }, [tour.id, isLoggedIn]);
+  }, [getTourId(tour), isLoggedIn]);
 
   const checkIfSaved = async () => {
     if (!isLoggedIn) return;
 
     try {
       const response = await axios.get(
-        `${API_BASE}/wishlist/check/${tour.id}`,
+        `${API_BASE}/wishlist/check/${getTourId(tour)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -57,7 +67,7 @@ export default function TourCard({ tour }: { tour: Tour }) {
     setIsLoading(true);
     try {
       if (isSaved) {
-        await axios.delete(`${API_BASE}/wishlist/${tour.id}`, {
+        await axios.delete(`${API_BASE}/wishlist/${getTourId(tour)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setIsSaved(false);
@@ -69,9 +79,9 @@ export default function TourCard({ tour }: { tour: Tour }) {
         await axios.post(
           `${API_BASE}/wishlist`,
           {
-            tourId: tour.id,
+            tourId: getTourId(tour),
             tourTitle: tour.title,
-            tourImage: tour.image,
+            tourImage: tour.images?.[0],
             tourPrice: tour.price,
           },
           { headers: { Authorization: `Bearer ${token}` } },
@@ -96,12 +106,12 @@ export default function TourCard({ tour }: { tour: Tour }) {
 
   return (
     <Link
-      to={`/tours/${tour.id}`}
-      className="group block bg-card rounded-lg overflow-hidden shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] transition-all duration-500"
+      to={`/tours/${getTourId(tour)}`}
+      className="group flex flex-col bg-card rounded-lg overflow-hidden shadow-[0_2px_16px_-4px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] transition-all duration-500 h-full"
     >
       <div className="relative overflow-hidden aspect-[4/3]">
         <img
-          src={tour.image}
+          src={getImageUrl(tour.images?.[0] || "")}
           alt={tour.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           loading="lazy"
@@ -125,32 +135,34 @@ export default function TourCard({ tour }: { tour: Tour }) {
           </button>
         )}
       </div>
-      <div className="p-5 space-y-3">
-        <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] uppercase tracking-widest">
-          <MapPin className="w-3 h-3" />
-          {tour.location}
-        </div>
-        <h3 className="font-display font-semibold text-foreground text-lg leading-snug line-clamp-2 group-hover:text-accent transition-colors duration-300">
-          {tour.title}
-        </h3>
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-1.5">
-            <Star className="w-3.5 h-3.5 fill-accent text-accent" />
-            <span className="text-sm font-semibold">{tour.rating}</span>
-            <span className="text-xs text-muted-foreground">
-              ({tour.reviewCount})
-            </span>
+      <div className="p-5 flex flex-col flex-1">
+        <div className="space-y-3">
+          <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] uppercase tracking-widest">
+            <MapPin className="w-3 h-3" />
+            {tour.location}
           </div>
-          <div className="text-right">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
-              from
-            </span>
-            <span className="ml-1.5 text-lg font-semibold text-foreground tabular-nums">
-              ${tour.price}
-            </span>
+          <h3 className="font-display font-semibold text-foreground text-lg leading-snug line-clamp-2 group-hover:text-accent transition-colors duration-300">
+            {tour.title}
+          </h3>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-accent text-accent" />
+              <span className="text-sm font-semibold">{tour.rating}</span>
+              <span className="text-xs text-muted-foreground">
+                ({tour.reviewCount})
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                from
+              </span>
+              <span className="ml-1.5 text-lg font-semibold text-foreground tabular-nums">
+                ${tour.price}
+              </span>
+            </div>
           </div>
         </div>
-        <Button variant="accent" className="w-full mt-2" size="sm">
+        <Button variant="accent" className="w-full mt-auto" size="sm">
           Book Now
         </Button>
       </div>

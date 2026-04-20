@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Star,
@@ -18,14 +18,17 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { tours } from "@/data/travel-data";
 import { isTokenValid } from "@/lib/utils";
 
 const tabs = ["Overview", "Itinerary", "Reviews"] as const;
 
+// Helper to get tour ID from either _id or id field
+const getTourId = (tour: any): string => (tour?._id || tour?.id) as string;
+
 export default function TourDetail() {
   const { id } = useParams();
-  const tour = tours.find((t) => t.id === id) || tours[0];
+  const [tour, setTour] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Overview");
   const [currentImg, setCurrentImg] = useState(0);
   const [guests, setGuests] = useState(2);
@@ -37,13 +40,46 @@ export default function TourDetail() {
   const { toast } = useToast();
 
   const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
-  const images = [
-    tour.image,
-    ...tours
-      .filter((t) => t.id !== tour.id)
-      .slice(0, 3)
-      .map((t) => t.image),
-  ];
+
+  // Helper to get full image URL
+  const getImageUrl = (imagePath: string): string => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `${API_BASE}/assets/tours/${imagePath}`;
+  };
+
+  useEffect(() => {
+    fetchTour();
+  }, [id]);
+
+  const fetchTour = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/tours/${id}`);
+      setTour(response.data.tour);
+    } catch (error) {
+      console.error("Failed to fetch tour:", error);
+      toast({
+        title: "Error",
+        description: "Tour not found.",
+        variant: "destructive",
+      });
+      navigate("/tours");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !tour) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="text-center py-12">Loading tour...</div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const images = tour.images || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,7 +98,7 @@ export default function TourDetail() {
             {/* Gallery */}
             <div className="relative rounded-lg overflow-hidden aspect-[16/9]">
               <img
-                src={images[currentImg]}
+                src={getImageUrl(images[currentImg] || "")}
                 alt={tour.title}
                 className="w-full h-full object-cover"
               />
@@ -102,7 +138,7 @@ export default function TourDetail() {
                   className={`shrink-0 w-20 h-14 rounded-md overflow-hidden border-2 transition-all ${i === currentImg ? "border-accent" : "border-transparent opacity-50 hover:opacity-100"}`}
                 >
                   <img
-                    src={img}
+                    src={getImageUrl(img || "")}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -453,12 +489,11 @@ export default function TourDetail() {
                     const response = await axios.post(
                       `${API_BASE}/bookings`,
                       {
-                        tourId: tour.id,
+                        tourId: getTourId(tour),
                         tourTitle: tour.title,
                         date,
                         guests,
                         total: Math.round(tour.price * guests * 1.05),
-                        userId,
                       },
                       {
                         headers: {

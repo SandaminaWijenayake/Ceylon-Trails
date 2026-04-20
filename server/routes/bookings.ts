@@ -11,6 +11,7 @@ import User from "../models/User.js";
 
 interface AuthRequest extends Request {
   userId?: string;
+  userRole?: string;
 }
 
 interface JwtPayloadWithUser {
@@ -36,12 +37,19 @@ function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
 
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    return res.status(500).json({ message: "Server JWT secret not configured" });
+    return res
+      .status(500)
+      .json({ message: "Server JWT secret not configured" });
   }
 
   try {
     const payload = jwt.verify(token, secret as string) as unknown;
-    if (!payload || typeof payload !== "object" || Array.isArray(payload) || !("userId" in payload)) {
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload) ||
+      !("userId" in payload)
+    ) {
       return res.status(401).json({ message: "Invalid token payload" });
     }
 
@@ -51,10 +59,29 @@ function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
     }
 
     req.userId = typedPayload.userId;
-    return next();
+
+    // Get user role
+    User.findById(req.userId)
+      .then((user) => {
+        if (user) {
+          req.userRole = user.role;
+        }
+        next();
+      })
+      .catch(() => {
+        // If user lookup fails, proceed without role (will fail admin check)
+        next();
+      });
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token", error });
   }
+}
+
+function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== "admin") {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
 }
 
 router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
@@ -86,8 +113,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
       if (user) {
         const msg = {
           to: user.email,
-          from: 'noreply@ceylontrails.com',
-          subject: 'Booking Confirmed - Ceylon Trails',
+          from: "noreply@ceylontrails.com",
+          subject: "Booking Confirmed - Ceylon Trails",
           html: `
             <h2>Booking Confirmed!</h2>
             <p>Dear ${user.firstName},</p>
@@ -105,7 +132,7 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
         await sgMail.send(msg);
       }
     } catch (emailError) {
-      console.error('Email sending failed:', emailError);
+      console.error("Email sending failed:", emailError);
       // Don't fail the booking if email fails
     }
 
@@ -122,7 +149,7 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
 
   try {
     const bookings = await Booking.find({
-      user: new mongoose.Types.ObjectId(req.userId),
+      user: req.userId,
     }).sort({ createdAt: -1 });
     res.json({ bookings });
   } catch (error) {
@@ -130,43 +157,48 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.put("/:id/cancel", authenticate, async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
+router.put(
+  "/:id/cancel",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
 
-  try {
-    const booking = await Booking.findById(id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-
-    if (booking.user.toString() !== req.userId) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
-    if (booking.status !== "confirmed") {
-      return res.status(400).json({ message: "Booking cannot be cancelled" });
-    }
-
-    const now = new Date();
-    const isFreeCancellation = now <= booking.cancellationDeadline;
-    const cancellationFee = isFreeCancellation ? 0 : Math.round(booking.total * 0.20); // 20% fee
-    const refundAmount = booking.total - cancellationFee;
-
-    booking.status = "cancelled";
-    booking.cancelledAt = now;
-    booking.cancellationFee = cancellationFee;
-    booking.refundAmount = refundAmount;
-    await booking.save();
-
-    // Send cancellation email
     try {
-      const user = await User.findById(req.userId);
-      if (user) {
-        const msg = {
-          to: user.email,
-          from: 'noreply@ceylontrails.com',
-          subject: 'Booking Cancelled - Ceylon Trails',
-          html: `
+      const booking = await Booking.findById(id);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      if (booking.user !== req.userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      if (booking.status !== "confirmed") {
+        return res.status(400).json({ message: "Booking cannot be cancelled" });
+      }
+
+      const now = new Date();
+      const isFreeCancellation = now <= booking.cancellationDeadline;
+      const cancellationFee = isFreeCancellation
+        ? 0
+        : Math.round(booking.total * 0.2); // 20% fee
+      const refundAmount = booking.total - cancellationFee;
+
+      booking.status = "cancelled";
+      booking.cancelledAt = now;
+      booking.cancellationFee = cancellationFee;
+      booking.refundAmount = refundAmount;
+      await booking.save();
+
+      // Send cancellation email
+      try {
+        const user = await User.findById(req.userId);
+        if (user) {
+          const msg = {
+            to: user.email,
+            from: "noreply@ceylontrails.com",
+            subject: "Booking Cancelled - Ceylon Trails",
+            html: `
             <h2>Booking Cancelled</h2>
             <p>Dear ${user.firstName},</p>
             <p>Your booking for <strong>${booking.tourTitle}</strong> has been cancelled.</p>
@@ -178,16 +210,31 @@ router.put("/:id/cancel", authenticate, async (req: AuthRequest, res: Response) 
             </ul>
             <p>If you have any questions, please contact our support team.</p>
           `,
-        };
-        await sgMail.send(msg);
+          };
+          await sgMail.send(msg);
+        }
+      } catch (emailError) {
+        console.error("Cancellation email failed:", emailError);
       }
-    } catch (emailError) {
-      console.error('Cancellation email failed:', emailError);
-    }
 
-    res.json({ booking });
-  } catch (error) {
-    res.status(500).json({ message: "Error cancelling booking", error });
+      res.json({ booking });
+    } catch (error) {
+      res.status(500).json({ message: "Error cancelling booking", error });
+    }
+  },
+);
+
+router.get("/all", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const bookings = await Booking.find({}).lean();
+    res.json({ bookings });
+  } catch (error: unknown) {
+    console.error("Error fetching bookings:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      message: "Error fetching bookings",
+      error: errorMessage,
+    });
   }
 });
 
@@ -199,7 +246,7 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-    if (booking.user.toString() !== req.userId) {
+    if (booking.user !== req.userId) {
       return res.status(403).json({ message: "Forbidden" });
     }
     res.json({ booking });
@@ -207,5 +254,35 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Error fetching booking", error });
   }
 });
+
+router.put(
+  "/:id/status",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["confirmed", "cancelled", "completed"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    try {
+      const booking = await Booking.findByIdAndUpdate(
+        id,
+        { status },
+        { new: true },
+      );
+
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      res.json({ booking });
+    } catch (error) {
+      res.status(500).json({ message: "Error updating booking status", error });
+    }
+  },
+);
 
 export default router;

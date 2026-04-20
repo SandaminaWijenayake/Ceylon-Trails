@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBooking extends Document {
-  user: mongoose.Types.ObjectId;
+  user: string;
   tourId: string;
   tourTitle: string;
   date: string;
@@ -18,7 +18,7 @@ export interface IBooking extends Document {
 
 const bookingSchema: Schema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    user: { type: String, required: true },
     tourId: { type: String, required: true },
     tourTitle: { type: String, required: true },
     date: { type: String, required: true },
@@ -26,7 +26,7 @@ const bookingSchema: Schema = new Schema(
     total: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["confirmed", "cancelled", "expired"],
+      enum: ["confirmed", "cancelled", "expired", "completed"],
       default: "confirmed",
     },
     cancellationDeadline: { type: Date, required: true },
