@@ -334,6 +334,25 @@ function ToursManagement() {
     }
   };
 
+  const deleteOldImages = async (imagePaths: string[]) => {
+    const token = localStorage.getItem("authToken");
+    console.log("Deleting old images:", imagePaths);
+    // Delete the old images from the assets folder
+    for (const imagePath of imagePaths) {
+      try {
+        console.log(`Deleting image: ${imagePath}`);
+        await axios.delete(`${API_BASE}/tours/delete-image/${imagePath}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log(`Deleted image: ${imagePath}`);
+      } catch (error) {
+        console.error("Error deleting image:", error);
+      }
+    }
+  };
+
   const uploadImages = async () => {
     if (selectedFiles.length !== 4) {
       throw new Error("Please select exactly 4 images");
@@ -343,6 +362,8 @@ function ToursManagement() {
     try {
       const token = localStorage.getItem("authToken");
       const formDataUpload = new FormData();
+
+      // Upload the new images FIRST
       selectedFiles.forEach((file) => {
         formDataUpload.append("images", file);
       });
@@ -358,7 +379,15 @@ function ToursManagement() {
         },
       );
 
-      return response.data.imagePaths;
+      const newImagePaths = response.data.imagePaths;
+
+      // Only delete old images AFTER successful upload
+      const existingImagePaths = editingTour?.images || [];
+      if (existingImagePaths.length > 0) {
+        await deleteOldImages(existingImagePaths);
+      }
+
+      return newImagePaths;
     } finally {
       setUploading(false);
     }

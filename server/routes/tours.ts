@@ -276,12 +276,10 @@ router.post(
         images.length !== 4 ||
         !description
       ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "All required fields must be provided, including exactly 4 images",
-          });
+        return res.status(400).json({
+          message:
+            "All required fields must be provided, including exactly 4 images",
+        });
       }
 
       const tour = new Tour({
@@ -385,6 +383,40 @@ router.delete(
     } catch (error) {
       console.error("Error deleting tour:", error);
       res.status(500).json({ message: "Failed to delete tour" });
+    }
+  },
+);
+
+// DELETE /tours/delete-image/:imagePath - Delete a specific image file (admin only)
+router.delete(
+  "/delete-image/:imagePath",
+  authenticate,
+  requireAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      // Extract just the filename in case a full path is sent
+      const filename = path.basename(req.params.imagePath as string);
+      const fullPath = path.join(process.cwd(), "assets", "tours", filename);
+
+      console.log(`Attempting to delete image: ${fullPath}`);
+
+      // Check if file exists before deleting
+      const fs = await import("fs/promises");
+      try {
+        await fs.access(fullPath);
+        console.log(`File exists: ${fullPath}`);
+      } catch {
+        console.log(`File not found: ${fullPath}`);
+        return res.status(404).json({ message: "Image file not found" });
+      }
+
+      // Delete the file
+      await fs.unlink(fullPath);
+      console.log(`Successfully deleted: ${fullPath}`);
+      res.json({ message: "Image deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      res.status(500).json({ message: "Failed to delete image" });
     }
   },
 );
