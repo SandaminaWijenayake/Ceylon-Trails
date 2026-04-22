@@ -37,6 +37,9 @@ const groupTypes = ["Solo", "Couple", "Family", "Group"];
 const includesOptions = ["Transport", "Meals", "Hotel", "Guide"];
 
 export default function TourListing() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

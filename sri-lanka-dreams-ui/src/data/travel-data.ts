@@ -1,11 +1,3 @@
-import ellaImg from "@/assets/ella-bridge.jpg";
-import galleImg from "@/assets/galle-fort.jpg";
-import mirissaImg from "@/assets/mirissa-beach.jpg";
-import kandyImg from "@/assets/kandy-temple.jpg";
-import sigiriyaImg from "@/assets/sigiriya-rock.jpg";
-import safariImg from "@/assets/safari-leopard.jpg";
-import teaImg from "@/assets/tea-plantation.jpg";
-
 export interface Tour {
   id?: string;
   _id?: string;
@@ -33,31 +25,31 @@ export interface Destination {
 export const destinations: Destination[] = [
   {
     name: "Ella",
-    image: ellaImg,
+    image: "",
     tourCount: 24,
     tagline: "Mountain railways & misty trails",
   },
   {
     name: "Galle",
-    image: galleImg,
+    image: "",
     tourCount: 18,
     tagline: "Colonial charm meets coastal beauty",
   },
   {
     name: "Mirissa",
-    image: mirissaImg,
+    image: "",
     tourCount: 15,
     tagline: "Whale watching & golden beaches",
   },
   {
     name: "Kandy",
-    image: kandyImg,
+    image: "",
     tourCount: 22,
     tagline: "Sacred temples & hill country",
   },
   {
     name: "Sigiriya",
-    image: sigiriyaImg,
+    image: "",
     tourCount: 12,
     tagline: "Ancient fortress in the sky",
   },
@@ -75,7 +67,7 @@ export const tours: Tour[] = [
     type: "Adventure",
     groupType: "Group",
     includes: ["Transport", "Guide", "Meals"],
-    image: ellaImg,
+    images: [],
     description:
       "Journey through tea-draped highlands aboard Sri Lanka's most scenic railway. Cross the legendary Nine Arches Bridge, hike Little Adam's Peak, and sip freshly brewed Ceylon tea at a hilltop plantation.",
     status: "active",
@@ -91,7 +83,7 @@ export const tours: Tour[] = [
     type: "Cultural",
     groupType: "Couple",
     includes: ["Guide", "Meals"],
-    image: galleImg,
+    images: [],
     description:
       "Stroll through 400 years of colonial history within the ramparts of Galle Fort. Visit artisan workshops, the Maritime Museum, and end with sunset on the lighthouse promontory.",
     status: "active",
@@ -107,7 +99,7 @@ export const tours: Tour[] = [
     type: "Wildlife Safari",
     groupType: "Family",
     includes: ["Transport", "Guide", "Meals"],
-    image: mirissaImg,
+    images: [],
     description:
       "Set out at dawn for the deep Indian Ocean where blue whales, sperm whales, and spinner dolphins cruise past the southern coast. Afternoon free for beach relaxation.",
     status: "active",
@@ -123,7 +115,7 @@ export const tours: Tour[] = [
     type: "Cultural",
     groupType: "Family",
     includes: ["Transport", "Hotel", "Guide", "Meals"],
-    image: kandyImg,
+    images: [],
     description:
       "Visit the sacred Temple of the Tooth, experience a traditional Kandyan dance performance, and stay at a boutique tea estate in the surrounding hills.",
     status: "active",
@@ -139,7 +131,7 @@ export const tours: Tour[] = [
     type: "Adventure",
     groupType: "Group",
     includes: ["Transport", "Hotel", "Guide"],
-    image: sigiriyaImg,
+    images: [],
     description:
       "Climb the 1,200 steps to the summit of Sigiriya, marvel at the ancient frescoes, and explore the five cave temples of Dambulla filled with centuries-old Buddhist murals.",
     status: "active",
@@ -155,7 +147,7 @@ export const tours: Tour[] = [
     type: "Wildlife Safari",
     groupType: "Family",
     includes: ["Transport", "Hotel", "Guide", "Meals"],
-    image: safariImg,
+    images: [],
     description:
       "Track leopards, elephants, and sloth bears in Asia's most wildlife-dense park. Camp under starlit skies and wake to the calls of painted storks.",
     status: "active",
@@ -171,7 +163,7 @@ export const tours: Tour[] = [
     type: "Hiking",
     groupType: "Solo",
     includes: ["Transport", "Hotel", "Guide", "Meals"],
-    image: teaImg,
+    images: [],
     description:
       "Multi-day trekking through emerald tea estates, misty peaks, and hidden waterfalls. Stay in colonial-era bungalows and taste single-origin tea at each stop.",
     status: "active",
@@ -187,7 +179,7 @@ export const tours: Tour[] = [
     type: "Luxury",
     groupType: "Couple",
     includes: ["Transport", "Hotel", "Guide", "Meals"],
-    image: mirissaImg,
+    images: [],
     description:
       "Five nights at an oceanfront villa with private pool, couples spa treatments, sunset catamaran cruise, and personal chef dinner on the beach.",
     status: "active",
@@ -204,14 +196,14 @@ export const testimonials = [
   },
   {
     name: "Tobias Lindqvist",
-    text: "We saw three blue whales on our Mirissa trip — an absolutely unforgettable morning. The crew were professional and genuinely passionate.",
+    text: "We saw three blue whales on our Mirissa trip  an absolutely unforgettable morning. The crew were professional and genuinely passionate.",
     location: "Stockholm, Sweden",
     rating: 5,
     initials: "TL",
   },
   {
     name: "Priya Sharma",
-    text: "Sigiriya at sunrise, with barely anyone else around — pure magic. The itinerary was perfectly paced and our hotel exceeded expectations.",
+    text: "Sigiriya at sunrise, with barely anyone else around  pure magic. The itinerary was perfectly paced and our hotel exceeded expectations.",
     location: "Toronto, Canada",
     rating: 5,
     initials: "PS",

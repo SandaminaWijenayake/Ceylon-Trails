@@ -1,21 +1,30 @@
 import {
-  Search,
-  Calendar,
-  Users,
   Star,
   Shield,
   Headphones,
   Clock,
   MapPin,
+  Compass,
+  Calendar,
+  CheckCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TourCard from "@/components/TourCard";
 import { useScrollReveal } from "@/hooks/use-scroll-reveal";
-import { destinations, tours, testimonials } from "@/data/travel-data";
-import heroImg from "@/assets/hero-beach.jpg";
+import { testimonials } from "@/data/travel-data";
+import heroImg1 from "@/assets/hero-image1.jpg";
+import heroImg2 from "@/assets/hero-image2.webp";
+import heroImg3 from "@/assets/hero-image3.jpg";
+import introImg1 from "@/assets/image1.jpg";
+import introImg3 from "@/assets/image3.jpg";
+import introImg4 from "@/assets/image4.jpeg";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 function RevealSection({
   children,
@@ -39,13 +48,28 @@ function RevealSection({
 }
 
 function HeroSection() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const heroImages = [heroImg1, heroImg2, heroImg3];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-      <img
-        src={heroImg}
-        alt="Sri Lanka tropical beach"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      {heroImages.map((img, index) => (
+        <img
+          key={index}
+          src={img}
+          alt={`Sri Lanka ${index + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+            index === currentSlide ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ))}
       <div className="absolute inset-0 bg-primary/65" />
       <div className="relative container-travel py-32">
         <div className="max-w-2xl">
@@ -65,73 +89,62 @@ function HeroSection() {
             Handcrafted itineraries through ancient temples, misty highlands,
             and sun-kissed coastlines. Your Sri Lanka adventure begins here.
           </p>
-
-          {/* <div className="mt-12 bg-card/95 backdrop-blur-xl rounded-lg p-3 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.3)] animate-fade-up" style={{ animationDelay: "240ms" }}>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              <div className="flex items-center gap-2 bg-muted/60 rounded-md px-4 py-3.5">
-                <MapPin className="w-4 h-4 text-accent shrink-0" />
-                <input placeholder="Where to?" className="bg-transparent text-sm w-full outline-none text-foreground placeholder:text-muted-foreground" />
-              </div>
-              <div className="flex items-center gap-2 bg-muted/60 rounded-md px-4 py-3.5">
-                <Calendar className="w-4 h-4 text-accent shrink-0" />
-                <input placeholder="When?" className="bg-transparent text-sm w-full outline-none text-foreground placeholder:text-muted-foreground" />
-              </div>
-              <div className="flex items-center gap-2 bg-muted/60 rounded-md px-4 py-3.5">
-                <Users className="w-4 h-4 text-accent shrink-0" />
-                <input placeholder="Guests" className="bg-transparent text-sm w-full outline-none text-foreground placeholder:text-muted-foreground" />
-              </div>
-              <Button variant="accent" className="rounded-md h-auto py-3.5">
-                <Search className="w-4 h-4" />
-                Search
-              </Button>
-            </div>
-          </div> */}
+          <div
+            className="flex gap-2 mt-10 animate-fade-up"
+            style={{ animationDelay: "240ms" }}
+          >
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentSlide
+                    ? "w-8 bg-accent"
+                    : "w-4 bg-primary-foreground/40"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function DestinationsSection() {
+function IntroSection() {
+  const introImages = [introImg1, introImg3, introImg4];
+
   return (
     <section className="py-28 bg-background">
       <div className="container-travel">
-        <RevealSection>
+        <RevealSection className="text-center max-w-2xl mx-auto mb-16">
           <p className="text-accent text-xs font-semibold uppercase tracking-[0.3em] mb-4">
-            Destinations
+            The Pearl of the Indian Ocean
           </p>
           <h2 className="text-3xl lg:text-4xl font-bold text-foreground text-balance">
-            Explore Sri Lanka
+            Sri Lanka Awaits
           </h2>
-          <p className="mt-4 text-muted-foreground max-w-lg text-pretty leading-relaxed">
-            From misty mountains to golden shores — every corner tells a story
-            worth discovering.
+          <p className="mt-4 text-muted-foreground text-pretty leading-relaxed">
+            From ancient kingdoms and sacred temples to pristine beaches and
+            misty tea plantations, Sri Lanka is a land of endless wonder.
+            Whether you seek adventure, culture, or serenity — this island has
+            it all.
           </p>
         </RevealSection>
 
-        <div className="mt-14 grid grid-cols-2 lg:grid-cols-5 gap-5">
-          {destinations.map((d, i) => (
-            <RevealSection key={d.name} delay={i * 80}>
-              <Link
-                to="/tours"
-                className="group relative block rounded-lg overflow-hidden aspect-[3/4]"
-              >
-                <img
-                  src={d.image}
-                  alt={d.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="font-display font-semibold text-primary-foreground text-lg">
-                    {d.name}
-                  </h3>
-                  <p className="text-primary-foreground/60 text-xs mt-1 tracking-wide">
-                    {d.tourCount} experiences
-                  </p>
-                </div>
-              </Link>
+        <div className="grid md:grid-cols-3 gap-5">
+          {introImages.map((img, i) => (
+            <RevealSection
+              key={i}
+              delay={i * 100}
+              className="group relative overflow-hidden rounded-xl aspect-[4/3]"
+            >
+              <img
+                src={img}
+                alt={`Sri Lanka ${i + 1}`}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </RevealSection>
           ))}
         </div>
@@ -141,34 +154,65 @@ function DestinationsSection() {
 }
 
 function ToursSection() {
+  const [apiTours, setApiTours] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTours = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/tours`);
+        const activeTours = response.data.tours.filter(
+          (t: any) => t.status === "active",
+        );
+        const topRated = activeTours
+          .sort((a: any, b: any) => b.rating - a.rating)
+          .slice(0, 4);
+        setApiTours(topRated);
+      } catch (error) {
+        console.error("Failed to fetch tours:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTours();
+  }, []);
+
   return (
     <section className="py-28 bg-muted/40">
       <div className="container-travel">
-        <RevealSection>
-          <div className="flex items-end justify-between flex-wrap gap-6">
-            <div>
-              <p className="text-accent text-xs font-semibold uppercase tracking-[0.3em] mb-4">
-                Curated Experiences
-              </p>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground text-balance">
-                Popular Tours
-              </h2>
-              <p className="mt-4 text-muted-foreground text-pretty leading-relaxed">
-                Traveller-tested, locally guided — our most loved experiences.
-              </p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to="/tours">View all tours →</Link>
-            </Button>
-          </div>
+        <RevealSection className="text-center max-w-2xl mx-auto mb-16">
+          <p className="text-accent text-xs font-semibold uppercase tracking-[0.3em] mb-4">
+            Curated Experiences
+          </p>
+          <h2 className="text-3xl lg:text-4xl font-bold text-foreground text-balance">
+            Popular Tours
+          </h2>
+          <p className="mt-4 text-muted-foreground text-pretty leading-relaxed">
+            Traveller-tested, locally guided — our most loved experiences.
+          </p>
         </RevealSection>
 
-        <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
-          {tours.slice(0, 4).map((t, i) => (
-            <RevealSection key={t.id} delay={i * 80}>
-              <TourCard tour={t} />
-            </RevealSection>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
+          {loading ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              Loading tours...
+            </div>
+          ) : apiTours.length > 0 ? (
+            apiTours.map((t, i) => (
+              <RevealSection key={t._id} delay={i * 80}>
+                <TourCard tour={t} />
+              </RevealSection>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              No tours available
+            </div>
+          )}
+        </div>
+        <div className="text-center mt-10">
+          <Button variant="outline" asChild>
+            <Link to="/tours">View all tours →</Link>
+          </Button>
         </div>
       </div>
     </section>
@@ -197,6 +241,64 @@ const features = [
     desc: "Find it cheaper and we'll match the price.",
   },
 ];
+
+function HowItWorksSection() {
+  const steps = [
+    {
+      icon: Compass,
+      title: "Choose Your Adventure",
+      desc: "Browse our curated tours and pick the experience that speaks to you.",
+    },
+    {
+      icon: Calendar,
+      title: "Book With Ease",
+      desc: "Select your dates and guests our team handles the rest.",
+    },
+    {
+      icon: CheckCircle,
+      title: "Travel Worry-Free",
+      desc: "Enjoy your journey with 24/7 support and flexible cancellation.",
+    },
+  ];
+
+  return (
+    <section className="py-28 bg-muted/30">
+      <div className="container-travel">
+        <RevealSection className="text-center max-w-2xl mx-auto mb-16">
+          <p className="text-accent text-xs font-semibold uppercase tracking-[0.3em] mb-4">
+            Simple Process
+          </p>
+          <h2 className="text-3xl lg:text-4xl font-bold text-foreground text-balance">
+            How It Works
+          </h2>
+        </RevealSection>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          {steps.map((step, i) => (
+            <RevealSection
+              key={step.title}
+              delay={i * 100}
+              className="text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mx-auto mb-6">
+                <step.icon className="w-7 h-7 text-primary" />
+              </div>
+              <div className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
+                Step {i + 1}
+              </div>
+              <h3 className="font-display font-semibold text-foreground text-lg mb-3">
+                {step.title}
+              </h3>
+              <p className="text-sm text-muted-foreground text-pretty leading-relaxed">
+                {step.desc}
+              </p>
+            </RevealSection>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function WhySection() {
   return (
@@ -247,7 +349,7 @@ function TestimonialsSection() {
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           {testimonials.map((t, i) => (
             <RevealSection key={t.name} delay={i * 100}>
-              <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-lg p-8">
+              <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-lg p-8 flex flex-col h-full">
                 <div className="flex gap-1 mb-5">
                   {Array.from({ length: t.rating }).map((_, j) => (
                     <Star key={j} className="w-4 h-4 fill-accent text-accent" />
@@ -256,7 +358,7 @@ function TestimonialsSection() {
                 <p className="text-sm leading-relaxed opacity-85 text-pretty italic">
                   "{t.text}"
                 </p>
-                <div className="mt-8 flex items-center gap-4">
+                <div className="mt-auto flex items-center pt-8 gap-4">
                   <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent">
                     {t.initials}
                   </div>
@@ -275,12 +377,16 @@ function TestimonialsSection() {
 }
 
 export default function Index() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <div className="min-h-screen">
       <Navbar />
       <HeroSection />
-      <DestinationsSection />
+      <IntroSection />
       <ToursSection />
+      <HowItWorksSection />
       <WhySection />
       <TestimonialsSection />
       <Footer />

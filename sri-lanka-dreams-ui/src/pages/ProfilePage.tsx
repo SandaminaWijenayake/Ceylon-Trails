@@ -63,10 +63,17 @@ export default function ProfilePage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [removingTourId, setRemovingTourId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+  const getImageUrl = (imagePath: string): string => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("http")) return imagePath;
+    return `${API_BASE}/assets/tours/${imagePath}`;
+  };
 
   useEffect(() => {
     fetchData();
@@ -196,22 +203,37 @@ export default function ProfilePage() {
     }
   };
 
-  const getStatusBadge = (status: string, cancellationDeadline: string) => {
-    const now = new Date();
-    const deadline = new Date(cancellationDeadline);
-    const isFreeCancellation = now <= deadline;
+  const handleRemoveFromWishlist = async (tourId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRemovingTourId(tourId);
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.delete(`${API_BASE}/wishlist/${tourId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSavedTours((prev) => prev.filter((t) => t.tourId !== tourId));
+      toast({
+        title: "Removed from saved",
+        description: "Tour removed from your saved tours.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to remove tour.",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingTourId(null);
+    }
+  };
 
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
         return (
-          <span
-            className={`text-xs font-medium px-3 py-1 rounded-full ${
-              isFreeCancellation
-                ? "bg-green-100 text-green-800"
-                : "bg-blue-100 text-blue-800"
-            }`}
-          >
-            {isFreeCancellation ? "Confirmed (Free Cancellation)" : "Confirmed"}
+          <span className="text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-800">
+            Confirmed
           </span>
         );
       case "cancelled":
@@ -425,10 +447,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {getStatusBadge(
-                        booking.status,
-                        booking.cancellationDeadline,
-                      )}
+                      {getStatusBadge(booking.status)}
                       {canCancel && (
                         <Button
                           variant="outline"
@@ -532,33 +551,40 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
               {savedTours.map((tour) => (
-                <Link
-                  key={tour._id}
-                  to={`/tours/${tour.tourId}`}
-                  className="group bg-card border border-border/60 rounded-lg overflow-hidden hover:shadow-md transition-all duration-500"
-                >
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    <img
-                      src={tour.tourImage}
-                      alt={tour.tourTitle}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                    <Heart className="absolute top-3 right-3 w-5 h-5 fill-accent text-accent" />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-display font-semibold text-sm text-foreground line-clamp-1 mb-3">
-                      {tour.tourTitle}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        from
-                      </span>
-                      <span className="font-semibold text-foreground text-sm">
-                        ${tour.tourPrice}
-                      </span>
+                <div key={tour._id} className="group relative bg-card border border-border/60 rounded-lg overflow-hidden hover:shadow-md transition-all duration-500">
+                  <Link
+                    to={`/tours/${tour.tourId}`}
+                    className="block"
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      <img
+                        src={getImageUrl(tour.tourImage)}
+                        alt={tour.tourTitle}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <button
+                        onClick={(e) => handleRemoveFromWishlist(tour.tourId, e)}
+                        disabled={removingTourId === tour.tourId}
+                        className="absolute top-3 right-3 p-2 rounded-full bg-card/90 backdrop-blur-sm hover:bg-card transition-colors disabled:opacity-50"
+                      >
+                        <Heart className="w-5 h-5 fill-accent text-accent" />
+                      </button>
                     </div>
-                  </div>
-                </Link>
+                    <div className="p-5">
+                      <h3 className="font-display font-semibold text-sm text-foreground line-clamp-1 mb-3">
+                        {tour.tourTitle}
+                      </h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          from
+                        </span>
+                        <span className="font-semibold text-foreground text-sm">
+                          ${tour.tourPrice}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
               ))}
             </div>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   LayoutDashboard,
@@ -7,24 +7,23 @@ import {
   CalendarCheck,
   Users,
   Bell,
-  Search,
-  ChevronDown,
   Menu,
   X,
   TrendingUp,
   DollarSign,
   UserCheck,
-  BarChart3,
+  Activity,
   MoreHorizontal,
   Plus,
   Edit,
   Trash2,
   Copy,
   Eye,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { bookings, adminUsers } from "@/data/travel-data";
+import { log } from "console";
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard, path: "/admin" },
@@ -46,8 +45,11 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const userName = localStorage.getItem("userName") || "Admin";
+  console.log("User Name:", userName);
   const userInitials = userName
     .split(" ")
     .map((n) => n.charAt(0))
@@ -55,15 +57,28 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     .toUpperCase()
     .slice(0, 2);
 
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userRole");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully.",
+    });
+    navigate("/login");
+  };
+
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div
-      className={`${mobile ? "w-64" : sidebarOpen ? "w-64" : "w-16"} bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 shrink-0`}
+      className={`${mobile ? "w-64 h-full" : sidebarOpen ? "w-64" : "w-16"} bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 shrink-0`}
     >
       <div className="h-[72px] flex items-center px-5 gap-3 border-b border-sidebar-border">
         {(sidebarOpen || mobile) && (
-          <span className="font-display font-bold text-lg tracking-tight">
-            Ceylon<span className="text-sidebar-primary">Trails</span>
-          </span>
+          <Link to="/" className="flex items-center gap-3">
+            <span className="font-display font-bold text-lg tracking-tight">
+              Ceylon<span className="text-sidebar-primary">Trails</span>
+            </span>
+          </Link>
         )}
       </div>
       <nav className="flex-1 py-6 space-y-1 px-3">
@@ -99,7 +114,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             className="fixed inset-0 bg-foreground/20"
             onClick={() => setMobileSidebar(false)}
           />
-          <div className="relative z-10">
+          <div className="relative z-10 h-full">
             <Sidebar mobile />
           </div>
         </div>
@@ -120,13 +135,6 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
             </button>
-            <div className="hidden sm:flex items-center gap-2 bg-muted/60 border border-border/40 rounded-md px-4 py-2 w-64">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                placeholder="Search..."
-                className="bg-transparent text-sm outline-none w-full"
-              />
-            </div>
           </div>
           <div className="flex items-center gap-5">
             <button className="relative p-2 rounded-md hover:bg-muted transition-colors">
@@ -141,6 +149,13 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                 {userName}
               </span>
             </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-md hover:bg-muted transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-[18px] h-[18px] text-muted-foreground" />
+            </button>
           </div>
         </header>
 
@@ -151,33 +166,127 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 }
 
 function OverviewPage() {
-  const stats = [
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    totalRevenue: 0,
+    activeUsers: 0,
+    completedBookings: 0,
+  });
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [topTours, setTopTours] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [bookingsRes, usersRes, toursRes] = await Promise.all([
+        axios.get(`${API_BASE}/bookings/all`, { headers }),
+        axios.get(`${API_BASE}/users/all`, { headers }),
+        axios.get(`${API_BASE}/tours`, { headers }),
+      ]);
+
+      const bookings = bookingsRes.data.bookings || [];
+      const users = usersRes.data.users || [];
+      const tours = toursRes.data.tours || [];
+
+      // Create user map for lookup
+      const userMap = {};
+      users.forEach((u) => {
+        userMap[u._id] = u;
+      });
+
+      // Enhance bookings with user data
+      const enhancedBookings = bookings.map((b) => ({
+        ...b,
+        userId: userMap[b.user] || { firstName: "", lastName: "", email: "" },
+      }));
+
+      // Calculate stats
+      const totalRevenue = enhancedBookings.reduce(
+        (sum, b) => sum + (b.total || 0),
+        0,
+      );
+      const completedBookings = enhancedBookings.filter(
+        (b) => b.status === "completed",
+      ).length;
+
+      setStats({
+        totalBookings: enhancedBookings.length,
+        totalRevenue: Math.round(totalRevenue),
+        activeUsers: users.length,
+        completedBookings: completedBookings,
+      });
+
+      setRecentBookings(enhancedBookings.slice(0, 5));
+
+      // Compute top booked tours
+      const tourBookingCounts = {};
+      enhancedBookings.forEach((b) => {
+        if (b.tourTitle) {
+          tourBookingCounts[b.tourTitle] =
+            (tourBookingCounts[b.tourTitle] || 0) + 1;
+        }
+      });
+      // Map tourTitle to tour object
+      const tourMap = {};
+      tours.forEach((t) => {
+        tourMap[t.title] = t;
+      });
+      // Create array of tours with booking count
+      const topToursArr = Object.entries(tourBookingCounts)
+        .map(([title, count]) => ({
+          ...(tourMap[title] || { title, price: 0, _id: title }),
+          bookingCount: count,
+        }))
+        .sort((a, b) => b.bookingCount - a.bookingCount)
+        .slice(0, 5);
+      setTopTours(topToursArr);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-12">Loading dashboard...</div>;
+  }
+
+  const statsArray = [
     {
       label: "Total Bookings",
-      value: "1,247",
-      change: "+12.5%",
+      value: stats.totalBookings.toLocaleString(),
       icon: CalendarCheck,
       color: "text-accent",
     },
     {
-      label: "Revenue",
-      value: "$184,392",
-      change: "+8.2%",
+      label: "Total Revenue",
+      value: `$${stats.totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: "text-accent",
     },
     {
       label: "Active Users",
-      value: "3,891",
-      change: "+15.3%",
+      value: stats.activeUsers.toLocaleString(),
       icon: UserCheck,
       color: "text-accent",
     },
     {
-      label: "Conversion Rate",
-      value: "4.7%",
-      change: "+0.8%",
-      icon: BarChart3,
+      label: "Completed Bookings",
+      value: stats.completedBookings.toLocaleString(),
+      icon: Activity,
       color: "text-accent",
     },
   ];
@@ -187,7 +296,7 @@ function OverviewPage() {
       <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {stats.map((s) => (
+        {statsArray.map((s) => (
           <div
             key={s.label}
             className="bg-card border border-border/60 rounded-lg p-6"
@@ -201,9 +310,6 @@ function OverviewPage() {
             <p className="text-2xl font-bold text-foreground tabular-nums">
               {s.value}
             </p>
-            <span className="text-xs text-accent font-medium flex items-center gap-1 mt-2">
-              <TrendingUp className="w-3 h-3" /> {s.change} vs last month
-            </span>
           </div>
         ))}
       </div>
@@ -211,30 +317,80 @@ function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border/60 rounded-lg p-7">
           <h3 className="font-display font-semibold text-foreground text-lg mb-5">
-            Revenue Over Time
+            Top Booked Tours
           </h3>
-          <div className="h-48 flex items-end justify-center gap-3">
-            {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((h, i) => (
-              <div
-                key={i}
-                className="w-5 rounded-t bg-accent/20 hover:bg-accent/40 transition-colors"
-                style={{ height: `${h}%` }}
-              />
-            ))}
+          <div className="space-y-3">
+            {topTours.length > 0 ? (
+              topTours.map((tour, idx) => (
+                <div
+                  key={tour._id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {idx + 1}
+                    </span>
+                    <span className="font-medium text-foreground line-clamp-1">
+                      {tour.title}
+                    </span>
+                  </div>
+                  <span className="text-sm font-semibold text-accent">
+                    ${tour.price}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                No tours yet
+              </p>
+            )}
           </div>
         </div>
+
         <div className="bg-card border border-border/60 rounded-lg p-7">
           <h3 className="font-display font-semibold text-foreground text-lg mb-5">
-            Booking Trends
+            Booking Status
           </h3>
-          <div className="h-48 flex items-end justify-center gap-3">
-            {[30, 50, 70, 45, 85, 60, 40, 75, 90, 55, 80, 65].map((h, i) => (
-              <div
-                key={i}
-                className="w-5 rounded-t bg-primary/15 hover:bg-primary/30 transition-colors"
-                style={{ height: `${h}%` }}
-              />
-            ))}
+          <div className="space-y-3">
+            {recentBookings.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Confirmed
+                  </span>
+                  <span className="font-semibold">
+                    {
+                      recentBookings.filter((b) => b.status === "confirmed")
+                        .length
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="font-semibold">
+                    {
+                      recentBookings.filter((b) => b.status === "pending")
+                        .length
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Completed
+                  </span>
+                  <span className="font-semibold">
+                    {
+                      recentBookings.filter((b) => b.status === "completed")
+                        .length
+                    }
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                No bookings yet
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -248,10 +404,10 @@ function OverviewPage() {
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border/60">
                 <th className="pb-4 font-medium text-xs uppercase tracking-wider">
-                  ID
+                  Name
                 </th>
                 <th className="pb-4 font-medium text-xs uppercase tracking-wider">
-                  Guest
+                  Email
                 </th>
                 <th className="pb-4 font-medium text-xs uppercase tracking-wider hidden sm:table-cell">
                   Tour
@@ -265,21 +421,27 @@ function OverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.slice(0, 5).map((b) => (
+              {recentBookings.map((b) => (
                 <tr
-                  key={b.id}
+                  key={b._id}
                   className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                 >
-                  <td className="py-4 font-medium text-foreground">{b.id}</td>
-                  <td className="py-4 text-muted-foreground">{b.user}</td>
+                  <td className="py-4 font-medium text-foreground">
+                    {b.userId?.firstName && b.userId?.lastName
+                      ? `${b.userId.firstName} ${b.userId.lastName}`
+                      : "Guest"}
+                  </td>
+                  <td className="py-4 text-muted-foreground">
+                    {b.userId?.email || "N/A"}
+                  </td>
                   <td className="py-4 hidden sm:table-cell max-w-[200px] truncate text-muted-foreground">
-                    {b.tour}
+                    {b.tourTitle || "N/A"}
                   </td>
                   <td className="py-4">
                     <StatusBadge status={b.status} />
                   </td>
                   <td className="py-4 text-right font-medium tabular-nums">
-                    ${b.amount}
+                    ${b.total}
                   </td>
                 </tr>
               ))}
@@ -313,14 +475,16 @@ function ToursManagement() {
     status: "active",
   });
   const { toast } = useToast();
-
   useEffect(() => {
     fetchTours();
   }, []);
 
   const fetchTours = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/tours`);
+      const token = localStorage.getItem("authToken");
+      const response = await axios.get(`${API_BASE}/tours`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setTours(response.data.tours);
     } catch (error) {
       console.error("Failed to fetch tours:", error);
@@ -488,6 +652,30 @@ function ToursManagement() {
     setShowModal(true);
   };
 
+  const toggleTourStatus = async (tourId: string, currentStatus: string) => {
+    const token = localStorage.getItem("authToken");
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+
+    try {
+      await axios.put(
+        `${API_BASE}/tours/${tourId}`,
+        { ...{ status: newStatus } },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast({
+        title: "Success",
+        description: `Tour status changed to ${newStatus}.`,
+      });
+      fetchTours();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update tour status.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDelete = async (tourId) => {
     if (!confirm("Are you sure you want to delete this tour?")) return;
 
@@ -595,9 +783,16 @@ function ToursManagement() {
                     ${t.price}
                   </td>
                   <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
+                    <button
+                      onClick={() => toggleTourStatus(t._id, t.status)}
+                      className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-pointer transition-colors ${
+                        t.status === "active"
+                          ? "bg-accent/10 text-accent hover:bg-accent/20"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
                       <Eye className="w-3 h-3" /> {t.status}
-                    </span>
+                    </button>
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -832,10 +1027,31 @@ function BookingsManagement() {
   const fetchBookings = async () => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(`${API_BASE}/bookings/all`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const [bookingsRes, usersRes] = await Promise.all([
+        axios.get(`${API_BASE}/bookings/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${API_BASE}/users/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const allBookings = bookingsRes.data.bookings || [];
+      const users = usersRes.data.users || [];
+
+      // Create user map for lookup
+      const userMap = {};
+      users.forEach((u) => {
+        userMap[u._id] = u;
       });
-      setBookings(response.data.bookings);
+
+      // Enhance bookings with user data
+      const enhancedBookings = allBookings.map((b) => ({
+        ...b,
+        userId: userMap[b.user] || { firstName: "", lastName: "", email: "" },
+      }));
+
+      setBookings(enhancedBookings);
     } catch (error) {
       console.error("Failed to fetch bookings:", error);
       toast({
@@ -886,10 +1102,10 @@ function BookingsManagement() {
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border/60 bg-muted/30">
                 <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider">
-                  ID
+                  Name
                 </th>
                 <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider">
-                  Guest
+                  Email
                 </th>
                 <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider hidden md:table-cell">
                   Tour
@@ -912,9 +1128,13 @@ function BookingsManagement() {
                   className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                 >
                   <td className="px-5 py-4 font-medium text-foreground">
-                    {b._id.slice(-6)}
+                    {b.userId?.firstName && b.userId?.lastName
+                      ? `${b.userId.firstName} ${b.userId.lastName}`
+                      : "Unknown"}
                   </td>
-                  <td className="px-5 py-4 text-muted-foreground">User</td>
+                  <td className="px-5 py-4 text-muted-foreground">
+                    {b.userId?.email || "N/A"}
+                  </td>
                   <td className="px-5 py-4 hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
                     {b.tourTitle}
                   </td>
@@ -978,6 +1198,50 @@ function UsersManagement() {
     }
   };
 
+  const changeUserRole = async (userId: string, newRole: string) => {
+    const token = localStorage.getItem("authToken");
+    try {
+      await axios.put(
+        `${API_BASE}/users/${userId}/role`,
+        { role: newRole },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast({
+        title: "Success",
+        description: `User role changed to ${newRole}.`,
+      });
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change user role.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    const token = localStorage.getItem("authToken");
+    try {
+      await axios.delete(`${API_BASE}/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast({
+        title: "Success",
+        description: "User deleted successfully.",
+      });
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-12">Loading users...</div>;
   }
@@ -999,11 +1263,8 @@ function UsersManagement() {
                 <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider">
                   Role
                 </th>
-                <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider hidden md:table-cell">
-                  Bookings
-                </th>
-                <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider hidden md:table-cell">
-                  Last Active
+                <th className="px-5 py-4 font-medium text-xs uppercase tracking-wider text-right">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -1028,17 +1289,22 @@ function UsersManagement() {
                     {u.email}
                   </td>
                   <td className="px-5 py-4">
-                    <span
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full ${u.role === "admin" ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"}`}
+                    <select
+                      value={u.role}
+                      onChange={(e) => changeUserRole(u._id, e.target.value)}
+                      className="text-xs px-2 py-1 rounded border border-border/40 bg-background"
                     >
-                      {u.role}
-                    </span>
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   </td>
-                  <td className="px-5 py-4 tabular-nums hidden md:table-cell text-muted-foreground">
-                    {u.bookings}
-                  </td>
-                  <td className="px-5 py-4 text-muted-foreground hidden md:table-cell">
-                    {new Date(u.lastActive).toLocaleDateString()}
+                  <td className="px-5 py-4 text-right">
+                    <button
+                      onClick={() => deleteUser(u._id)}
+                      className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </button>
                   </td>
                 </tr>
               ))}

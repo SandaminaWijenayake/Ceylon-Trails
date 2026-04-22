@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,9 @@ import { AuthLayout, Field } from "./AuthLayout";
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export function SignupPage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [signupData, setSignupData] = useState({
     firstName: "",

@@ -11,7 +11,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@sendgrid/mail": "^8.1.6",
+    "@react-email/components": "^1.0.12",
+    "@react-email/tailwind": "^2.0.7",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
@@ -20,7 +21,11 @@
     "mongodb": "^7.1.1",
     "mongoose": "^9.4.1",
     "multer": "^2.1.1",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.5",
+    "nodemailer-mailgun-transport": "^2.1.5",
+    "react-email": "^6.0.0",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -29,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.5.2",
+    "@types/nodemailer": "^8.0.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",

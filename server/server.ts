@@ -7,6 +7,7 @@ import bookingRoutes from "./routes/bookings.js";
 import wishlistRoutes from "./routes/wishlist.js";
 import tourRoutes from "./routes/tours.js";
 import userRoutes from "./routes/users.js";
+import contactRoutes from "./routes/contact.js";
 import "./cron/bookingJobs.js";
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use("/bookings", bookingRoutes);
 app.use("/wishlist", wishlistRoutes);
 app.use("/tours", tourRoutes);
 app.use("/users", userRoutes);
+app.use("/contact", contactRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`📡 Server on port ${PORT}`));

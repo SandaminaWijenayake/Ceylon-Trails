@@ -1,14 +1,19 @@
 import axios from "axios";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AuthLayout, Field } from "./AuthLayout";
 
+import image from "@/assets/authpage1.jpg";
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export function LoginPage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [showPw, setShowPw] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginData, setLoginData] = useState({ loginEmail: "", password: "" });

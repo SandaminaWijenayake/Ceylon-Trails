@@ -1,14 +1,13 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { Menu, X, LogOut, User, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isTokenValid } from "@/lib/utils";
 
 const navLinks = [
   { label: "Home", to: "/" },
   { label: "Tours", to: "/tours" },
-  { label: "About", to: "#" },
-  { label: "Contact", to: "#" },
+  { label: "Contact", to: "/contact" },
 ];
 
 export default function Navbar() {
@@ -19,6 +18,8 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const isLoggedIn = isTokenValid(localStorage.getItem("authToken"));
+  const userRole = localStorage.getItem("userRole");
+  const isAdmin = userRole === "admin";
   const userName = localStorage.getItem("userName") || "";
   const userInitials = userName
     .split(" ")
@@ -83,7 +84,7 @@ export default function Navbar() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border/60 hover:border-accent/40 hover:bg-muted/50 transition-colors"
               >
                 <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-semibold text-accent">
                   {userInitials}
@@ -105,6 +106,18 @@ export default function Navbar() {
                     <User className="w-4 h-4" />
                     Profile
                   </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        navigate("/admin");
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center text-left gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted rounded-md transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      Admin Dashboard
+                    </button>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors"
@@ -145,19 +158,30 @@ export default function Navbar() {
             </Link>
           ))}
           {isLoggedIn ? (
-            <div className="flex flex-col gap-3 bg-black pt-4 border-t">
+            <div className="pt-4 space-y-4 border-t">
               <button
                 onClick={() => {
                   navigate("/profile");
                   setOpen(false);
                 }}
-                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                className="block w-full py-2 text-sm font-medium text-foreground tracking-wide text-left"
               >
                 Profile
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    navigate("/admin");
+                    setOpen(false);
+                  }}
+                  className="block w-full py-2 text-sm font-medium text-foreground tracking-wide text-left"
+                >
+                  Admin Dashboard
+                </button>
+              )}
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                className="block w-full py-2 text-sm font-medium text-destructive tracking-wide text-left"
               >
                 Logout
               </button>

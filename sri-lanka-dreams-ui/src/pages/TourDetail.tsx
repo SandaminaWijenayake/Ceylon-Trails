@@ -26,6 +26,9 @@ const tabs = ["Overview", "Itinerary", "Reviews"] as const;
 const getTourId = (tour: any): string => (tour?._id || tour?.id) as string;
 
 export default function TourDetail() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const { id } = useParams();
   const [tour, setTour] = useState(null);
   const [loading, setLoading] = useState(true);

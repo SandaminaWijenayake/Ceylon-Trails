@@ -129,6 +129,7 @@ function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
         if (user) {
           req.userRole = user.role;
         }
+        console.log("User role:", req.userRole);
         next();
       })
       .catch(() => {
@@ -148,7 +149,7 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
 }
 
 // Optional authentication middleware
-function optionalAuthenticate(
+async function optionalAuthenticate(
   req: AuthRequest,
   res: Response,
   next: NextFunction,
@@ -194,16 +195,11 @@ function optionalAuthenticate(
     req.userId = typedPayload.userId;
 
     // Get user role for admin checks
-    User.findById(req.userId)
-      .then((user) => {
-        if (user) {
-          req.userRole = user.role;
-        }
-        next();
-      })
-      .catch(() => {
-        next();
-      });
+    const user = await User.findById(req.userId);
+    if (user) {
+      req.userRole = user.role;
+    }
+    next();
   } catch (error) {
     next();
   }
@@ -215,7 +211,9 @@ router.get(
   optionalAuthenticate,
   async (req: AuthRequest, res: Response) => {
     try {
-      const query = req.userRole === "admin" ? {} : { status: "active" };
+      const { all } = req.query;
+      const query =
+        req.userRole === "admin" || all === "true" ? {} : { status: "active" };
       const tours = await Tour.find(query).sort({ createdAt: -1 });
       res.json({ tours });
     } catch (error) {

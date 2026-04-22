@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import heroImg from "@/assets/hero-beach.jpg";
+import authpageImg from "@/assets/authpage1.jpg";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 interface AuthLayoutProps {
@@ -13,7 +13,7 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:block relative">
         <img
-          src={heroImg}
+          src={authpageImg}
           alt="Sri Lanka"
           className="absolute inset-0 w-full h-full object-cover"
         />

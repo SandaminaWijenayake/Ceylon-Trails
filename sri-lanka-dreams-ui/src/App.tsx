@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
 import ProfilePage from "./pages/ProfilePage";
 import BookingConfirmation from "./pages/BookingConfirmation";
+import ContactPage from "./pages/ContactPage";
 import {
   AdminOverview,
   AdminTours,
@@ -45,6 +46,7 @@ const App = () => (
             path="/booking-confirmation"
             element={<BookingConfirmation />}
           />
+          <Route path="/contact" element={<ContactPage />} />
           <Route
             path="/admin"
             element={
