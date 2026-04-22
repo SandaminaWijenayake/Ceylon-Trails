@@ -1,19 +1,27 @@
+import "dotenv/config";
 import cron from "node-cron";
-import sgMail from "@sendgrid/mail";
+import { Resend } from "resend";
 import Booking from "../models/Booking.js";
-import User from "../models/User.js";
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+const resend = new Resend(process.env.RESEND_API_KEY);
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
+const FROM_EMAIL = "CeylonTrails <CeylonTrails@resend.dev>";
 
-// Run every hour
-cron.schedule("0 * * * *", async () => {
-  console.log("Running booking cleanup and reminder jobs...");
+async function sendEmail(to: string, subject: string, html: string) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+}
+
+// Run daily at 9 AM - Send "trip starts tomorrow" reminders
+cron.schedule("0 9 * * *", async () => {
+  console.log("Running booking reminder job...");
 
   try {
-    const now = new Date();
-
-    // 1. Send "trip starts tomorrow" reminders
+    // Find bookings for tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStart = new Date(tomorrow);
@@ -33,11 +41,10 @@ cron.schedule("0 * * * *", async () => {
       try {
         const user = booking.user as any;
         if (user && user.email) {
-          const msg = {
-            to: user.email,
-            from: "noreply@ceylontrails.com",
-            subject: "Your Trip Starts Tomorrow - Ceylon Trails",
-            html: `
+          await sendEmail(
+            user.email,
+            "Your Trip Starts Tomorrow - Ceylon Trails",
+            `
               <h2>Your Adventure Starts Tomorrow!</h2>
               <p>Dear ${user.firstName},</p>
               <p>We're excited to remind you that your trip <strong>${booking.tourTitle}</strong> starts tomorrow.</p>
@@ -49,8 +56,7 @@ cron.schedule("0 * * * *", async () => {
               <p>Please arrive at the meeting point 15 minutes early. Safe travels!</p>
               <p>Ceylon Trails Team</p>
             `,
-          };
-          await sgMail.send(msg);
+          );
           console.log(
             `Reminder sent to ${user.email} for booking ${booking._id}`,
           );
@@ -63,63 +69,68 @@ cron.schedule("0 * * * *", async () => {
       }
     }
 
-    // 2. Mark expired bookings (though we don't have pending status anymore, keeping for future use)
-    // This would be for any bookings that might need expiration logic
-
-    console.log("Booking jobs completed");
+    console.log("Booking reminder job completed");
   } catch (error) {
-    console.error("Error in booking cron job:", error);
+    console.error("Error in booking reminder job:", error);
   }
 });
 
-// Run every 6 hours to check for admin cancellations and notify users
-cron.schedule("0 */6 * * *", async () => {
-  console.log("Checking for admin cancellations...");
+// Run daily at 6 PM - Send post-tour "thank you + review" emails
+cron.schedule("0 18 * * *", async () => {
+  console.log("Running post-tour follow-up job...");
 
   try {
-    // Find recently cancelled bookings (within last 6 hours)
-    const sixHoursAgo = new Date();
-    sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const recentCancellations = await Booking.find({
-      status: "cancelled",
-      cancelledAt: { $gte: sixHoursAgo },
+    // Find bookings that ended today (tour date has passed)
+    const completedBookings = await Booking.find({
+      date: { $lt: today.toISOString().slice(0, 10) },
+      status: "confirmed",
     }).populate("user");
 
-    for (const booking of recentCancellations) {
+    for (const booking of completedBookings) {
       try {
         const user = booking.user as any;
-        if (user && user.email && booking.cancellationFee !== undefined) {
-          // Only send if this is an admin cancellation (we'll need to track this)
-          // For now, sending for all cancellations as per requirements
-          const msg = {
-            to: user.email,
-            from: "noreply@ceylontrails.com",
-            subject: "Booking Status Update - Ceylon Trails",
-            html: `
-              <h2>Booking Status Update</h2>
+        if (user && user.email) {
+          // Mark as completed
+          booking.status = "completed";
+          await booking.save();
+
+          // Send thank you + review request email
+          await sendEmail(
+            user.email,
+            "Thank You for Your Trip! - Ceylon Trails",
+            `
+              <h2>Thank You for Traveling with Ceylon Trails!</h2>
               <p>Dear ${user.firstName},</p>
-              <p>Your booking for <strong>${booking.tourTitle}</strong> has been cancelled.</p>
-              <p><strong>Cancellation Details:</strong></p>
-              <ul>
-                <li>Original Amount: $${booking.total}</li>
-                <li>Cancellation Fee: $${booking.cancellationFee}</li>
-                <li>Refund Amount: $${booking.refundAmount}</li>
-              </ul>
-              <p>If you have any questions, please contact our support team.</p>
+              <p>We hope you had an amazing time on your <strong>${booking.tourTitle}</strong> tour!</p>
+              <p>Your feedback helps us improve and helps other travelers discover the best experiences in Sri Lanka.</p>
+              <p>Please take a moment to share your experience:</p>
+              <p>
+                <a href="https://ceylontrails.lk/tours/${booking.tourId}" style="display: inline-block; background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Leave a Review
+                </a>
+              </p>
+              <p>We'd love to hear from you!</p>
+              <p>Safe travels,<br>Ceylon Trails Team</p>
             `,
-          };
-          await sgMail.send(msg);
-          console.log(`Cancellation notification sent to ${user.email}`);
+          );
+          console.log(
+            `Post-tour email sent to ${user.email} for booking ${booking._id}`,
+          );
         }
       } catch (emailError) {
-        console.error(`Failed to send cancellation notification:`, emailError);
+        console.error(
+          `Failed to send post-tour email for booking ${booking._id}:`,
+          emailError,
+        );
       }
     }
 
-    console.log("Admin cancellation check completed");
+    console.log("Post-tour follow-up job completed");
   } catch (error) {
-    console.error("Error in admin cancellation check:", error);
+    console.error("Error in post-tour follow-up job:", error);
   }
 });
 

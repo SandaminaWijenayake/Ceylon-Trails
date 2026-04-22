@@ -7,7 +7,7 @@ export interface IBooking extends Document {
   date: string;
   guests: number;
   total: number;
-  status: "confirmed" | "cancelled" | "expired";
+  status: "confirmed" | "cancelled" | "expired" | "completed";
   cancellationDeadline: Date;
   cancelledAt?: Date;
   cancellationFee?: number;

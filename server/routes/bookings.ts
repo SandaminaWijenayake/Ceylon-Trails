@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, {
   type Request,
   type Response,
@@ -5,7 +6,7 @@ import express, {
 } from "express";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import sgMail from "@sendgrid/mail";
+import { Resend } from "resend";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 
@@ -20,8 +21,9 @@ interface JwtPayloadWithUser {
 
 const router = express.Router();
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+const resend = new Resend(process.env.RESEND_API_KEY);
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
+const FROM_EMAIL = "CeylonTrails <CeylonTrails@resend.dev>";
 
 function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -84,6 +86,19 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   next();
 }
 
+async function sendEmail(to: string, subject: string, html: string) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+}
+
+async function sendAdminNotification(subject: string, html: string) {
+  await sendEmail(ADMIN_EMAIL, subject, html);
+}
+
 router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   const { tourId, tourTitle, date, guests, total } = req.body;
 
@@ -107,15 +122,14 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
       cancellationDeadline,
     });
 
-    // Send confirmation email
+    // Send confirmation email to user
     try {
       const user = await User.findById(req.userId);
       if (user) {
-        const msg = {
-          to: user.email,
-          from: "noreply@ceylontrails.com",
-          subject: "Booking Confirmed - Ceylon Trails",
-          html: `
+        await sendEmail(
+          user.email,
+          "Booking Confirmed - Ceylon Trails",
+          `
             <h2>Booking Confirmed!</h2>
             <p>Dear ${user.firstName},</p>
             <p>Your booking for <strong>${tourTitle}</strong> has been confirmed.</p>
@@ -128,12 +142,29 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
             <p>You can cancel your booking for free up to 48 hours before the tour date.</p>
             <p>Thank you for choosing Ceylon Trails!</p>
           `,
-        };
-        await sgMail.send(msg);
+        );
       }
     } catch (emailError) {
       console.error("Email sending failed:", emailError);
-      // Don't fail the booking if email fails
+    }
+
+    // Send admin notification
+    try {
+      const user = await User.findById(req.userId);
+      await sendAdminNotification(
+        "New Booking - Ceylon Trails",
+        `
+          <h2>New Booking Received</h2>
+          <p><strong>Tour:</strong> ${tourTitle}</p>
+          <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
+          <p><strong>Email:</strong> ${user?.email}</p>
+          <p><strong>Date:</strong> ${date}</p>
+          <p><strong>Guests:</strong> ${guests}</p>
+          <p><strong>Total:</strong> $${total}</p>
+        `,
+      );
+    } catch (adminEmailError) {
+      console.error("Admin email failed:", adminEmailError);
     }
 
     res.status(201).json({ booking });
@@ -190,15 +221,14 @@ router.put(
       booking.refundAmount = refundAmount;
       await booking.save();
 
-      // Send cancellation email
+      // Send cancellation email to user
       try {
         const user = await User.findById(req.userId);
         if (user) {
-          const msg = {
-            to: user.email,
-            from: "noreply@ceylontrails.com",
-            subject: "Booking Cancelled - Ceylon Trails",
-            html: `
+          await sendEmail(
+            user.email,
+            "Booking Cancelled - Ceylon Trails",
+            `
             <h2>Booking Cancelled</h2>
             <p>Dear ${user.firstName},</p>
             <p>Your booking for <strong>${booking.tourTitle}</strong> has been cancelled.</p>
@@ -210,11 +240,29 @@ router.put(
             </ul>
             <p>If you have any questions, please contact our support team.</p>
           `,
-          };
-          await sgMail.send(msg);
+          );
         }
       } catch (emailError) {
         console.error("Cancellation email failed:", emailError);
+      }
+
+      // Send admin notification
+      try {
+        const user = await User.findById(req.userId);
+        await sendAdminNotification(
+          "Booking Cancelled - Ceylon Trails",
+          `
+            <h2>Booking Cancelled</h2>
+            <p><strong>Tour:</strong> ${booking.tourTitle}</p>
+            <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
+            <p><strong>Email:</strong> ${user?.email}</p>
+            <p><strong>Original Amount:</strong> $${booking.total}</p>
+            <p><strong>Cancellation Fee:</strong> $${cancellationFee}</p>
+            <p><strong>Refund Amount:</strong> $${refundAmount}</p>
+          `,
+        );
+      } catch (adminEmailError) {
+        console.error("Admin cancellation email failed:", adminEmailError);
       }
 
       res.json({ booking });

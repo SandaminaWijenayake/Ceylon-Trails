@@ -2,6 +2,9 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+
+dotenv.config();
+
 import authRoutes from "./routes/auth.js";
 import bookingRoutes from "./routes/bookings.js";
 import wishlistRoutes from "./routes/wishlist.js";
@@ -9,8 +12,6 @@ import tourRoutes from "./routes/tours.js";
 import userRoutes from "./routes/users.js";
 import contactRoutes from "./routes/contact.js";
 import "./cron/bookingJobs.js";
-
-dotenv.config();
 
 const app = express();
 app.use(cors());
