@@ -69,9 +69,10 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
   }
 
   try {
+    const userIdObj = new mongoose.Types.ObjectId(req.userId);
     const existingWish = await Wishlist.findOne({
-      user: req.userId,
-      tourId,
+      user: userIdObj,
+      tourId: String(tourId),
     });
 
     if (existingWish) {
@@ -79,8 +80,8 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     const wishlist = await Wishlist.create({
-      user: req.userId,
-      tourId,
+      user: userIdObj,
+      tourId: String(tourId),
       tourTitle,
       tourImage,
       tourPrice,
@@ -101,9 +102,8 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const wishlists = await Wishlist.find({
-      user: new mongoose.Types.ObjectId(req.userId),
-    }).sort({ createdAt: -1 });
+    const userIdObj = new mongoose.Types.ObjectId(req.userId);
+    const wishlists = await Wishlist.find({ user: userIdObj }).sort({ createdAt: -1 });
     res.json({ wishlists });
   } catch (error) {
     res.status(500).json({ message: "Error fetching wishlist", error });
@@ -116,14 +116,15 @@ router.delete(
   async (req: AuthRequest, res: Response) => {
     const { tourId } = req.params;
 
-    if (!req.userId) {
+    if (!req.userId || !tourId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
+      const userIdObj = new mongoose.Types.ObjectId(req.userId);
       const result = await Wishlist.findOneAndDelete({
-        user: new mongoose.Types.ObjectId(req.userId),
-        tourId,
+        user: userIdObj,
+        tourId: String(tourId),
       });
 
       if (!result) {
@@ -143,14 +144,15 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     const { tourId } = req.params;
 
-    if (!req.userId) {
+    if (!req.userId || !tourId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
+      const userIdObj = new mongoose.Types.ObjectId(req.userId);
       const isSaved = await Wishlist.findOne({
-        user: new mongoose.Types.ObjectId(req.userId),
-        tourId,
+        user: userIdObj,
+        tourId: String(tourId),
       });
 
       res.json({ isSaved: !!isSaved });

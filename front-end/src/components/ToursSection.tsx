@@ -15,6 +15,7 @@ export default function ToursSection() {
     const fetchTours = async () => {
       try {
         const response = await axios.get(`${API_BASE}/tours`);
+
         const activeTours = response.data.tours.filter(
           (t: any) => t.status === "active",
         );

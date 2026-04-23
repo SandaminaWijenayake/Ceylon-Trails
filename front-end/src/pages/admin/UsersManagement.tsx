@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
+const SUPER_ADMIN_EMAIL = "sandaminawijenayake0717@gmail.com";
+
 export default function UsersManagement() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,8 @@ export default function UsersManagement() {
     return <div className="text-center py-12">Loading users...</div>;
   }
 
+  const isSuperAdmin = (email: string) => email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-foreground">User Management</h1>
@@ -124,22 +128,30 @@ export default function UsersManagement() {
                     {u.email}
                   </td>
                   <td className="px-5 py-4">
-                    <select
-                      value={u.role}
-                      onChange={(e) => changeUserRole(u._id, e.target.value)}
-                      className="text-xs px-2 py-1 rounded border border-border/40 bg-background"
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    {isSuperAdmin(u.email) ? (
+                      <span className="text-xs px-2 py-1 rounded border border-border/40 bg-background">
+                        Super Admin
+                      </span>
+                    ) : (
+                      <select
+                        value={u.role}
+                        onChange={(e) => changeUserRole(u._id, e.target.value)}
+                        className="text-xs px-2 py-1 rounded border border-border/40 bg-background"
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() => deleteUser(u._id)}
-                      className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </button>
+                    {!isSuperAdmin(u.email) && (
+                      <button
+                        onClick={() => deleteUser(u._id)}
+                        className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
