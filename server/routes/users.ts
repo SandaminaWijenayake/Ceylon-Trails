@@ -92,7 +92,7 @@ router.get(
       // Get booking counts for each user
       const usersWithBookings = await Promise.all(
         users.map(async (user) => {
-          const bookingCount = await Booking.countDocuments({ user: user._id });
+          const bookingCount = await Booking.countDocuments({ user: user._id.toString() });
           return {
             ...user.toObject(),
             bookings: bookingCount,

@@ -4,8 +4,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
+    "build": "tsc",
     "dev": "tsx watch server.ts",
-    "start": "npx tsx server.ts"
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
