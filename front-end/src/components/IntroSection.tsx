@@ -1,7 +1,7 @@
 import { RevealSection } from "./RevealSection";
-import introImg1 from "@/assets/image1.jpg";
-import introImg3 from "@/assets/image3.jpg";
-import introImg4 from "@/assets/image4.jpeg";
+import introImg1 from "@/assets/image1.webp";
+import introImg3 from "@/assets/image3.webp";
+import introImg4 from "@/assets/image4.webp";
 
 export default function IntroSection() {
   const introImages = [introImg1, introImg3, introImg4];

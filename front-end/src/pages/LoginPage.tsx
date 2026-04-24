@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AuthLayout, Field } from "./AuthLayout";
 
-import image from "@/assets/authpage1.jpg";
-
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export function LoginPage() {

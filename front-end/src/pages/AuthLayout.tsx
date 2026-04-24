@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import authpageImg from "@/assets/authpage1.jpg";
+import authpageImg from "@/assets/authpage1.webp";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 interface AuthLayoutProps {

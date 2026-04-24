@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useScrollReveal } from "@/hooks/use-scroll-reveal";
-import heroImg1 from "@/assets/hero-image1.jpg";
+import heroImg1 from "@/assets/hero-image1.webp";
 import heroImg2 from "@/assets/hero-image2.webp";
-import heroImg3 from "@/assets/hero-image3.jpg";
+import heroImg3 from "@/assets/hero-image3.webp";
 
 export function RevealSection({
   children,

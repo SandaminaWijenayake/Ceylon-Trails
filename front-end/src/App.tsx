@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RenderLoadingIndicator } from "@/components/RenderLoadingIndicator";
 import Index from "./pages/Index";
 import TourListing from "./pages/TourListing";
 import TourDetail from "./pages/TourDetail";
@@ -28,6 +29,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <RenderLoadingIndicator />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/tours" element={<TourListing />} />
