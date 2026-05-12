@@ -7,6 +7,7 @@ import express, {
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import { resolve4 } from "node:dns";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 
@@ -29,7 +30,13 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
-});
+  lookup(hostname: string, opts: object, cb: (err: Error | null, address: string, family: number) => void) {
+    resolve4(hostname, (err, addresses) => {
+      if (err || !addresses?.[0]) cb(err ?? new Error("No IPv4 address"), "", 4);
+      else cb(null, addresses[0], 4);
+    });
+  },
+} as any);
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
 
