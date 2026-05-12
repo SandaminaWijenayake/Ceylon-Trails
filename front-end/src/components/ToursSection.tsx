@@ -10,6 +10,12 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 export default function ToursSection() {
   const [apiTours, setApiTours] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showColdStartMsg, setShowColdStartMsg] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowColdStartMsg(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const fetchTours = async () => {
@@ -50,7 +56,16 @@ export default function ToursSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
           {loading ? (
             <div className="col-span-full text-center py-12 text-muted-foreground">
-              Loading tours...
+              {showColdStartMsg ? (
+                <div>
+                  <p>Still loading...</p>
+                  <p className="text-sm mt-2">
+                    The server is waking up — this may take a few more seconds.
+                  </p>
+                </div>
+              ) : (
+                <p>Loading tours...</p>
+              )}
             </div>
           ) : apiTours.length > 0 ? (
             apiTours.map((t, i) => (

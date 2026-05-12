@@ -42,6 +42,13 @@ export default function TourListing() {
   }, []);
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showColdStartMsg, setShowColdStartMsg] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowColdStartMsg(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("rating");
   const [selectedLocation, setSelectedLocation] = useState("All");
@@ -373,7 +380,21 @@ export default function TourListing() {
           </aside>
 
           <div className="flex-1">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="col-span-full text-center py-24 text-muted-foreground">
+                {showColdStartMsg ? (
+                  <div>
+                    <p>Still loading...</p>
+                    <p className="text-sm mt-2">
+                      The server is waking up — this may take a few more
+                      seconds.
+                    </p>
+                  </div>
+                ) : (
+                  <p>Loading tours...</p>
+                )}
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="text-center py-24">
                 <MapPin className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
                 <h3 className="font-display font-semibold text-foreground text-lg mb-2">
