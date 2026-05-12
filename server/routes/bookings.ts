@@ -128,50 +128,41 @@ router.post("/", authenticate, async (req: AuthRequest, res: Response) => {
       cancellationDeadline,
     });
 
-    // Send confirmation email to user
-    try {
-      const user = await User.findById(req.userId);
-      if (user) {
-        await sendEmail(
-          user.email,
-          "Booking Confirmed - Ceylon Trails",
-          `
-            <h2>Booking Confirmed!</h2>
-            <p>Dear ${user.firstName},</p>
-            <p>Your booking for <strong>${tourTitle}</strong> has been confirmed.</p>
-            <p><strong>Booking Details:</strong></p>
-            <ul>
-              <li>Date: ${date}</li>
-              <li>Guests: ${guests}</li>
-              <li>Total: $${total}</li>
-            </ul>
-            <p>You can cancel your booking for free up to 48 hours before the tour date.</p>
-            <p>Thank you for choosing Ceylon Trails!</p>
-          `,
-        );
-      }
-    } catch (emailError) {
-      console.error("Email sending failed:", emailError);
+    // Send confirmation email to user (non-blocking)
+    const user = await User.findById(req.userId);
+    if (user) {
+      sendEmail(
+        user.email,
+        "Booking Confirmed - Ceylon Trails",
+        `
+          <h2>Booking Confirmed!</h2>
+          <p>Dear ${user.firstName},</p>
+          <p>Your booking for <strong>${tourTitle}</strong> has been confirmed.</p>
+          <p><strong>Booking Details:</strong></p>
+          <ul>
+            <li>Date: ${date}</li>
+            <li>Guests: ${guests}</li>
+            <li>Total: $${total}</li>
+          </ul>
+          <p>You can cancel your booking for free up to 48 hours before the tour date.</p>
+          <p>Thank you for choosing Ceylon Trails!</p>
+        `,
+      ).catch(e => console.error("Email sending failed:", e));
     }
 
-    // Send admin notification
-    try {
-      const user = await User.findById(req.userId);
-      await sendAdminNotification(
-        "New Booking - Ceylon Trails",
-        `
-          <h2>New Booking Received</h2>
-          <p><strong>Tour:</strong> ${tourTitle}</p>
-          <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
-          <p><strong>Email:</strong> ${user?.email}</p>
-          <p><strong>Date:</strong> ${date}</p>
-          <p><strong>Guests:</strong> ${guests}</p>
-          <p><strong>Total:</strong> $${total}</p>
-        `,
-      );
-    } catch (adminEmailError) {
-      console.error("Admin email failed:", adminEmailError);
-    }
+    // Send admin notification (non-blocking)
+    sendAdminNotification(
+      "New Booking - Ceylon Trails",
+      `
+        <h2>New Booking Received</h2>
+        <p><strong>Tour:</strong> ${tourTitle}</p>
+        <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
+        <p><strong>Email:</strong> ${user?.email}</p>
+        <p><strong>Date:</strong> ${date}</p>
+        <p><strong>Guests:</strong> ${guests}</p>
+        <p><strong>Total:</strong> $${total}</p>
+      `,
+    ).catch(e => console.error("Admin email failed:", e));
 
     res.status(201).json({ booking });
   } catch (error) {
@@ -227,49 +218,40 @@ router.put(
       booking.refundAmount = refundAmount;
       await booking.save();
 
-      // Send cancellation email to user
-      try {
-        const user = await User.findById(req.userId);
-        if (user) {
-          await sendEmail(
-            user.email,
-            "Booking Cancelled - Ceylon Trails",
-            `
-            <h2>Booking Cancelled</h2>
-            <p>Dear ${user.firstName},</p>
-            <p>Your booking for <strong>${booking.tourTitle}</strong> has been cancelled.</p>
-            <p><strong>Cancellation Details:</strong></p>
-            <ul>
-              <li>Original Amount: $${booking.total}</li>
-              <li>Cancellation Fee: $${cancellationFee}</li>
-              <li>Refund Amount: $${refundAmount}</li>
-            </ul>
-            <p>If you have any questions, please contact our support team.</p>
-          `,
-          );
-        }
-      } catch (emailError) {
-        console.error("Cancellation email failed:", emailError);
-      }
-
-      // Send admin notification
-      try {
-        const user = await User.findById(req.userId);
-        await sendAdminNotification(
+      // Send cancellation email to user (non-blocking)
+      const user = await User.findById(req.userId);
+      if (user) {
+        sendEmail(
+          user.email,
           "Booking Cancelled - Ceylon Trails",
           `
-            <h2>Booking Cancelled</h2>
-            <p><strong>Tour:</strong> ${booking.tourTitle}</p>
-            <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
-            <p><strong>Email:</strong> ${user?.email}</p>
-            <p><strong>Original Amount:</strong> $${booking.total}</p>
-            <p><strong>Cancellation Fee:</strong> $${cancellationFee}</p>
-            <p><strong>Refund Amount:</strong> $${refundAmount}</p>
-          `,
-        );
-      } catch (adminEmailError) {
-        console.error("Admin cancellation email failed:", adminEmailError);
+          <h2>Booking Cancelled</h2>
+          <p>Dear ${user.firstName},</p>
+          <p>Your booking for <strong>${booking.tourTitle}</strong> has been cancelled.</p>
+          <p><strong>Cancellation Details:</strong></p>
+          <ul>
+            <li>Original Amount: $${booking.total}</li>
+            <li>Cancellation Fee: $${cancellationFee}</li>
+            <li>Refund Amount: $${refundAmount}</li>
+          </ul>
+          <p>If you have any questions, please contact our support team.</p>
+        `,
+        ).catch(e => console.error("Cancellation email failed:", e));
       }
+
+      // Send admin notification (non-blocking)
+      sendAdminNotification(
+        "Booking Cancelled - Ceylon Trails",
+        `
+          <h2>Booking Cancelled</h2>
+          <p><strong>Tour:</strong> ${booking.tourTitle}</p>
+          <p><strong>Customer:</strong> ${user?.firstName} ${user?.lastName}</p>
+          <p><strong>Email:</strong> ${user?.email}</p>
+          <p><strong>Original Amount:</strong> $${booking.total}</p>
+          <p><strong>Cancellation Fee:</strong> $${cancellationFee}</p>
+          <p><strong>Refund Amount:</strong> $${refundAmount}</p>
+        `,
+      ).catch(e => console.error("Admin cancellation email failed:", e));
 
       res.json({ booking });
     } catch (error) {
