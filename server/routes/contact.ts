@@ -1,8 +1,16 @@
 import express, { type Request, type Response } from "express";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
 
 router.post("/", async (req: Request, res: Response) => {
@@ -13,8 +21,8 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    await resend.emails.send({
-      from: "CeylonTrails <CeylonTrails@resend.dev>",
+    await transporter.sendMail({
+      from: `"Ceylon Trails" <${process.env.GMAIL_USER}>`,
       to: ADMIN_EMAIL,
       replyTo: email,
       subject: `[CeylonTrails] ${subject}`,

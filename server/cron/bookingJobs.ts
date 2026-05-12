@@ -1,15 +1,21 @@
 import "dotenv/config";
 import cron from "node-cron";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import Booking from "../models/Booking.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
-const FROM_EMAIL = "CeylonTrails <CeylonTrails@resend.dev>";
 
 async function sendEmail(to: string, subject: string, html: string) {
-  await resend.emails.send({
-    from: FROM_EMAIL,
+  await transporter.sendMail({
+    from: `"Ceylon Trails" <${process.env.GMAIL_USER}>`,
     to,
     subject,
     html,
