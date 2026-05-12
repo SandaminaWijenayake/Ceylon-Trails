@@ -19,7 +19,7 @@ export default function IntroSection() {
           <p className="mt-4 text-muted-foreground text-pretty leading-relaxed">
             From ancient kingdoms and sacred temples to pristine beaches and
             misty tea plantations, Sri Lanka is a land of endless wonder.
-            Whether you seek adventure, culture, or serenity — this island has
+            Whether you seek adventure, culture, or serenity, this island has
             it all.
           </p>
         </RevealSection>
