@@ -49,7 +49,7 @@ export default function ToursSection() {
             Popular Tours
           </h2>
           <p className="mt-4 text-muted-foreground text-pretty leading-relaxed">
-            Traveller-tested, locally guided — our most loved experiences.
+            Traveller-tested, locally guided, our most loved experiences.
           </p>
         </RevealSection>
 
