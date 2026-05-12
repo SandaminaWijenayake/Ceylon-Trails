@@ -1,24 +1,8 @@
 import express, { type Request, type Response } from "express";
-import nodemailer from "nodemailer";
-import { resolve4 } from "node:dns";
+
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 const router = express.Router();
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  lookup(hostname: string, opts: object, cb: (err: Error | null, address: string, family: number) => void) {
-    resolve4(hostname, (err, addresses) => {
-      if (err || !addresses?.[0]) cb(err ?? new Error("No IPv4 address"), "", 4);
-      else cb(null, addresses[0], 4);
-    });
-  },
-} as any);
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
 
@@ -30,22 +14,29 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    await transporter.sendMail({
-      from: `"Ceylon Trails" <${process.env.GMAIL_USER}>`,
-      to: ADMIN_EMAIL,
-      replyTo: email,
-      subject: `[CeylonTrails] ${subject}`,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <hr />
-        <p><strong>Message:</strong></p>
-        <p>${message.replace(/\n/g, "<br>")}</p>
-        <hr />
-        <p style="color: #888; font-size: 12px;">This email was sent from the CeylonTrails contact form.</p>
-      `,
+    await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "api-key": process.env.BREVO_API_KEY!,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Ceylon Trails", email: process.env.BREVO_SENDER_EMAIL! },
+        to: [{ email: ADMIN_EMAIL }],
+        replyTo: { email },
+        subject: `[CeylonTrails] ${subject}`,
+        htmlContent: `
+          <h2>New Contact Form Submission</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr />
+          <p><strong>Message:</strong></p>
+          <p>${message.replace(/\n/g, "<br>")}</p>
+          <hr />
+          <p style="color: #888; font-size: 12px;">This email was sent from the CeylonTrails contact form.</p>
+        `,
+      }),
     });
 
     res.json({ message: "Message sent successfully" });

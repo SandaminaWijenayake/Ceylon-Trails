@@ -1,33 +1,24 @@
 import "dotenv/config";
 import cron from "node-cron";
-import nodemailer from "nodemailer";
-import { resolve4 } from "node:dns";
 import Booking from "../models/Booking.js";
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  lookup(hostname: string, opts: object, cb: (err: Error | null, address: string, family: number) => void) {
-    resolve4(hostname, (err, addresses) => {
-      if (err || !addresses?.[0]) cb(err ?? new Error("No IPv4 address"), "", 4);
-      else cb(null, addresses[0], 4);
-    });
-  },
-} as any);
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@ceylontrails.com";
 
 async function sendEmail(to: string, subject: string, html: string) {
-  await transporter.sendMail({
-    from: `"Ceylon Trails" <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html,
+  await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY!,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: "Ceylon Trails", email: process.env.BREVO_SENDER_EMAIL! },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
 }
 
