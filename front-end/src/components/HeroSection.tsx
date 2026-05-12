@@ -52,7 +52,7 @@ export default function HeroSection() {
       <div className="relative container-travel py-32">
         <div className="max-w-2xl">
           <p className="text-accent text-xs font-semibold uppercase tracking-[0.3em] mb-6 animate-fade-up">
-            Sri Lanka — The Pearl of the Indian Ocean
+            Sri Lanka - The Pearl of the Indian Ocean
           </p>
           <h1
             className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold text-primary-foreground leading-[1.08] text-balance animate-fade-up"
