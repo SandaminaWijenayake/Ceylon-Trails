@@ -386,7 +386,7 @@ export default function TourListing() {
                   <div>
                     <p>Still loading...</p>
                     <p className="text-sm mt-2">
-                      The server is waking up — this may take a few more
+                      The server is waking up, this may take a few more
                       seconds.
                     </p>
                   </div>
